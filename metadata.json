@@ -1,0 +1,6 @@
+{
+  "name": "JAMBOOMATCH",
+  "description": "Red social tipo Tinder exclusiva para la fiesta JAMBOO. Haz match con otros invitados y conecta por Instagram.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}

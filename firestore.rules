@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (Firebase Auth UID)
+    // Fields:
+    //   - uid: string (required) - Firebase Auth UID
+    //   - name: string (required, 1-50 chars) - Display name
+    //   - photoUrl: string (required) - URL of the photo
+    //   - instagram: string (required, 1-30 chars) - Instagram handle
+    //   - createdAt: timestamp (required) - Registration time
+    //
+    // Collection: likes
+    // Document ID: {fromUid}_{toUid}
+    // Fields:
+    //   - fromUid: string (required) - UID of the liker
+    //   - toUid: string (required) - UID of the liked
+    //   - createdAt: timestamp (required) - Time of like
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'photoUrl', 'instagram', 'createdAt']) &&
+             data.keys().hasOnly(['uid', 'name', 'photoUrl', 'instagram', 'createdAt']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 50 &&
+             data.photoUrl is string && data.photoUrl.size() > 0 &&
+             data.instagram is string && data.instagram.size() >= 1 && data.instagram.size() <= 30 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidLike(data) {
+      return data.keys().hasAll(['fromUid', 'toUid', 'createdAt']) &&
+             data.keys().hasOnly(['fromUid', 'toUid', 'createdAt']) &&
+             data.fromUid is string && data.fromUid == request.auth.uid &&
+             data.toUid is string && data.toUid.size() > 0 &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /likes/{likeId} {
+      // We need to read likes to check for mutual matches
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                    likeId == request.resource.data.fromUid + '_' + request.resource.data.toUid &&
+                    isValidLike(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.fromUid == request.auth.uid;
+    }
+  }
+}
