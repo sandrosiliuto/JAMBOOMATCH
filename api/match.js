@@ -1,17 +1,15 @@
 // api/match.js - Logic for handling matches securely
 // This file is designed to be used as a Vercel Serverless Function
 
-import { MongoClient, ObjectId } from "mongodb";
+import admin from "firebase-admin";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-let cachedClient = null;
-
-async function connectToDatabase() {
-  if (cachedClient) return cachedClient;
-  const client = await MongoClient.connect(MONGODB_URI);
-  cachedClient = client;
-  return client;
+if (admin.apps.length === 0) {
+  admin.initializeApp({
+    projectId: "jamboomatch"
+  });
 }
+
+const db = admin.firestore();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -19,8 +17,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    const client = await connectToDatabase();
-    const db = client.db("jamboo");
     const { fromId, toId } = req.body;
 
     if (!fromId || !toId) {
@@ -28,14 +24,15 @@ export default async function handler(req, res) {
     }
 
     // 1. Add to likesDados of the sender
-    await db.collection("asistentes").updateOne(
-      { _id: new ObjectId(fromId) },
-      { $addToSet: { likesDados: toId } }
-    );
+    const senderRef = db.collection("asistentes").doc(fromId);
+    await senderRef.update({
+      likesDados: admin.firestore.FieldValue.arrayUnion(toId)
+    });
 
     // 2. Check if the target user has already liked the sender
-    const targetUser = await db.collection("asistentes").findOne({ _id: new ObjectId(toId) });
-    const isMatch = targetUser && targetUser.likesDados && targetUser.likesDados.includes(fromId);
+    const targetDoc = await db.collection("asistentes").doc(toId).get();
+    const targetData = targetDoc.data();
+    const isMatch = targetData?.likesDados?.includes(fromId);
 
     return res.status(200).json({ 
       success: true, 

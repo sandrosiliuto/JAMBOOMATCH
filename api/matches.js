@@ -1,30 +1,32 @@
-import { MongoClient, ObjectId } from "mongodb";
+import admin from "firebase-admin";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-let cachedClient = null;
-
-async function connectToDatabase() {
-  if (cachedClient) return cachedClient;
-  const client = await MongoClient.connect(MONGODB_URI);
-  cachedClient = client;
-  return client;
+if (admin.apps.length === 0) {
+  admin.initializeApp({
+    projectId: "jamboomatch"
+  });
 }
+
+const db = admin.firestore();
 
 export default async function handler(req, res) {
   const { userId } = req.query;
   if (!userId) return res.status(400).json({ error: "Missing userId" });
 
-  const client = await connectToDatabase();
-  const db = client.db("jamboo");
-
   try {
-    const user = await db.collection("asistentes").findOne({ _id: new ObjectId(userId) });
-    if (!user) return res.status(404).json({ error: "User not found" });
+    const userDoc = await db.collection("asistentes").doc(userId).get();
+    const userData = userDoc.data();
+    if (!userData) return res.status(404).json({ error: "User not found" });
 
-    const matches = await db.collection("asistentes").find({
-      likesDados: userId,
-      _id: { $in: (user.likesDados || []).map(id => new ObjectId(id)) }
-    }).toArray();
+    const likesGiven = userData.likesDados || [];
+    if (likesGiven.length === 0) return res.status(200).json([]);
+
+    const matchesSnapshot = await db.collection("asistentes")
+      .where(admin.firestore.FieldPath.documentId(), "in", likesGiven)
+      .get();
+
+    const matches = matchesSnapshot.docs
+      .map(doc => ({ _id: doc.id, ...doc.data() }))
+      .filter((u: any) => u.likesDados?.includes(userId));
 
     return res.status(200).json(matches);
   } catch (error) {

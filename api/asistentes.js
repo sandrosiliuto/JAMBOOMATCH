@@ -1,40 +1,51 @@
-import { MongoClient, ObjectId } from "mongodb";
+import admin from "firebase-admin";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-let cachedClient = null;
-
-async function connectToDatabase() {
-  if (cachedClient) return cachedClient;
-  const client = await MongoClient.connect(MONGODB_URI);
-  cachedClient = client;
-  return client;
+if (admin.apps.length === 0) {
+  admin.initializeApp({
+    projectId: "jamboomatch"
+  });
 }
 
+const db = admin.firestore();
+
 export default async function handler(req, res) {
-  const client = await connectToDatabase();
-  const db = client.db("jamboo");
-
   if (req.method === 'POST') {
-    const { nombre, instagram, fotoURL } = req.body;
-    const existing = await db.collection("asistentes").findOne({ instagram });
-    if (existing) return res.status(200).json(existing);
+    try {
+      const { nombre, instagram, fotoURL } = req.body;
+      const cleanInstagram = instagram.replace('@', '');
 
-    const result = await db.collection("asistentes").insertOne({
-      nombre,
-      instagram,
-      fotoURL,
-      likesDados: [],
-      createdAt: new Date()
-    });
-    const newUser = await db.collection("asistentes").findOne({ _id: result.insertedId });
-    return res.status(201).json(newUser);
+      const snapshot = await db.collection("asistentes").where("instagram", "==", cleanInstagram).limit(1).get();
+      if (!snapshot.empty) {
+        const existing = snapshot.docs[0];
+        return res.status(200).json({ _id: existing.id, ...existing.data() });
+      }
+
+      const result = await db.collection("asistentes").add({
+        nombre,
+        instagram: cleanInstagram,
+        fotoURL,
+        likesDados: [],
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      const newUserDoc = await result.get();
+      return res.status(201).json({ _id: newUserDoc.id, ...newUserDoc.data() });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
   }
 
   if (req.method === 'GET') {
-    const { exclude } = req.query;
-    const query = exclude ? { _id: { $ne: new ObjectId(exclude) } } : {};
-    const users = await db.collection("asistentes").find(query).limit(100).toArray();
-    return res.status(200).json(users);
+    try {
+      const { exclude } = req.query;
+      const snapshot = await db.collection("asistentes").limit(100).get();
+      const users = snapshot.docs
+        .map(doc => ({ _id: doc.id, ...doc.data() }))
+        .filter(u => u._id !== exclude);
+      return res.status(200).json(users);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
   }
 
   return res.status(405).end();
