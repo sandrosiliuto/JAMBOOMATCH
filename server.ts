@@ -11,7 +11,7 @@ dotenv.config();
 // For this applet, we initialize with minimal config and rely on environment or project default.
 if (admin.apps.length === 0) {
   admin.initializeApp({
-    projectId: "jamboomatch",
+    projectId: "jamboo-8738b",
     // credential: admin.credential.applicationDefault() // This is the standard way on GCP
   });
 }

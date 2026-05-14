@@ -2,7 +2,7 @@ import admin from "firebase-admin";
 
 if (admin.apps.length === 0) {
   admin.initializeApp({
-    projectId: "jamboomatch"
+    projectId: "jamboo-8738b"
   });
 }
 

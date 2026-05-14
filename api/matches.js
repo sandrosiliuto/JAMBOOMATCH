@@ -2,7 +2,7 @@ import admin from "firebase-admin";
 
 if (admin.apps.length === 0) {
   admin.initializeApp({
-    projectId: "jamboomatch"
+    projectId: "jamboo-8738b"
   });
 }
 
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
     const matches = matchesSnapshot.docs
       .map(doc => ({ _id: doc.id, ...doc.data() }))
-      .filter((u: any) => u.likesDados?.includes(userId));
+      .filter((u) => u.likesDados?.includes(userId));
 
     return res.status(200).json(matches);
   } catch (error) {

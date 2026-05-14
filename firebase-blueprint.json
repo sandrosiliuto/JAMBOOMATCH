@@ -1,38 +1,23 @@
 {
   "entities": {
-    "User": {
-      "title": "User",
-      "description": "A guest at the JAMBOO party.",
+    "Asistente": {
+      "title": "Asistente",
+      "description": "Un asistente a la fiesta JAMBOO.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "Firebase Auth UID" },
-        "name": { "type": "string", "description": "Display name or nickname" },
-        "photoUrl": { "type": "string", "description": "URL of the uploaded photo" },
-        "instagram": { "type": "string", "description": "Instagram handle (without @)" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "When the user registered" }
+        "nombre": { "type": "string", "description": "Nombre o apodo" },
+        "instagram": { "type": "string", "description": "Usuario de Instagram (sin @)" },
+        "fotoURL": { "type": "string", "description": "URL de la foto (base64 o link)" },
+        "likesDados": { "type": "array", "items": { "type": "string" }, "description": "Lista de IDs de personas a las que les dio like" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Fecha de registro" }
       },
-      "required": ["uid", "name", "photoUrl", "instagram", "createdAt"]
-    },
-    "Like": {
-      "title": "Like",
-      "description": "A 'like' or 'fire' action from one user to another.",
-      "type": "object",
-      "properties": {
-        "fromUid": { "type": "string", "description": "UID of the user who liked" },
-        "toUid": { "type": "string", "description": "UID of the user being liked" },
-        "createdAt": { "type": "string", "format": "date-time", "description": "When the like occurred" }
-      },
-      "required": ["fromUid", "toUid", "createdAt"]
+      "required": ["nombre", "instagram", "fotoURL", "likesDados", "createdAt"]
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "User profile documents"
-    },
-    "/likes/{likeId}": {
-      "schema": "Like",
-      "description": "Like records. likeId can be fromUid_toUid"
+    "/asistentes/{asistenteId}": {
+      "schema": "Asistente",
+      "description": "Documentos de los asistentes"
     }
   }
 }
